@@ -4,7 +4,7 @@
 
 #include "helper.h"
 #include "capstone_test.h"
-#include <unistd.h>
+#include "../../../cstool/getopt.h"
 
 #define ARR_SIZE(a) (sizeof(a)/sizeof(a[0]))
 

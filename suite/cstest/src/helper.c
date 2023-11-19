@@ -1,8 +1,31 @@
 /* Capstone testing regression */
 /* By Do Minh Tuan <tuanit96@gmail.com>, 02-2019 */
 
-
 #include "helper.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+
+#include <math.h>
+
+// strndup() is not available on Windows
+static char *strndup(const char *s1, size_t n)
+{
+	char *copy = (char *)malloc(n + 1);
+	memcpy(copy, s1, n);
+	copy[n] = 0;
+	return copy;
+};
+#endif
+
+// strndup() was only added in OSX lion
+#if defined(__APPLE__)
+static char *strndup(const char *s1, size_t n)
+{
+	char *copy = calloc(n + 1, sizeof(char));
+	memcpy(copy, s1, n);
+	return copy;
+};
+#endif
 
 char **split(char *str, char *delim, int *size)
 {
@@ -16,17 +39,18 @@ char **split(char *str, char *delim, int *size)
 
 	while ((token = strstr(src, delim)) != NULL) {
 		result = (char **)realloc(result, sizeof(char *) * (cnt + 1));
-		result[cnt] = (char *)calloc(1, sizeof(char) * (int)(token - src + 10));
+		result[cnt] = (char *)calloc(
+			1, sizeof(char) * (int)(token - src + 10));
 		memcpy(result[cnt], src, token - src);
 		result[cnt][token - src] = '\0';
 		src = token + strlen(delim);
-		cnt ++;
+		cnt++;
 	}
 
 	if (strlen(src) > 0) {
 		result = (char **)realloc(result, sizeof(char *) * (cnt + 1));
 		result[cnt] = strdup(src);
-		cnt ++;
+		cnt++;
 	}
 
 	*size = cnt;
@@ -39,7 +63,7 @@ void print_strs(char **list_str, int size)
 
 	printf("[+] Debug %d strings:\n", size);
 	for (i = 0; i < size; ++i)
-		printf("String %d'th: %s\n", i+1, list_str[i]);
+		printf("String %d'th: %s\n", i + 1, list_str[i]);
 }
 
 void free_strs(char **list_str, int size)
@@ -97,7 +121,7 @@ void add_str(char **src, const char *format, ...)
 	vsprintf(tmp, format, args);
 	va_end(args);
 
-	len1 = strlen(*src);	
+	len1 = strlen(*src);
 	len2 = strlen(tmp);
 
 	*src = (char *)realloc(*src, sizeof(char) * (len1 + len2 + 10));
@@ -126,22 +150,25 @@ void replace_hex(char *src)
 		tmp_tmp = strndup(tmp, orig_found - tmp);
 		while (*found != '\0' && isxdigit(*found)) {
 			valid = 1;
-			if (*found >= 'a' && *found <='f')
-				value = value*0x10 + (*found - 'a' + 10);
+			if (*found >= 'a' && *found <= 'f')
+				value = value * 0x10 + (*found - 'a' + 10);
 			else
-				value = value*0x10 + (*found - '0');
+				value = value * 0x10 + (*found - '0');
 			found++;
 		}
 
-		if (valid == 1) add_str(&result, "%s%llu", tmp_tmp, value);
-		else add_str(&result, "%s0x", tmp_tmp);
+		if (valid == 1)
+			add_str(&result, "%s%llu", tmp_tmp, value);
+		else
+			add_str(&result, "%s0x", tmp_tmp);
 		tmp = found;
 		free(tmp_tmp);
 	}
 
 	add_str(&result, "%s", tmp);
 	if (strlen(result) >= MAXMEM) {
-		fprintf(stderr, "[  Error   ] --- Buffer Overflow in replace_hex()\n");
+		fprintf(stderr,
+			"[  Error   ] --- Buffer Overflow in replace_hex()\n");
 		free(result);
 		free(origin);
 		_fail(__FILE__, __LINE__);
@@ -168,9 +195,9 @@ void replace_negative(char *src, int mode)
 
 	while ((found = strstr(tmp, "-")) != NULL) {
 		orig_found = found;
-		found ++;
+		found++;
 		valid = 0;
-		
+
 		value = strdup("-");
 		cnt = 2;
 
@@ -179,7 +206,7 @@ void replace_negative(char *src, int mode)
 			value = (char *)realloc(value, cnt + 1);
 			value[cnt - 1] = *found;
 			value[cnt] = '\0';
-			cnt ++;
+			cnt++;
 			found++;
 		}
 
@@ -196,8 +223,8 @@ void replace_negative(char *src, int mode)
 				sscanf(value, "%lu", &tmp_long);
 				add_str(&result, "%s%lu", tmp_tmp, tmp_long);
 			}
-		}
-		else add_str(&result, "%s-", tmp_tmp);
+		} else
+			add_str(&result, "%s-", tmp_tmp);
 
 		tmp = found;
 		free(value);
@@ -206,7 +233,8 @@ void replace_negative(char *src, int mode)
 
 	add_str(&result, "%s", tmp);
 	if (strlen(result) >= MAXMEM) {
-		fprintf(stderr, "[  Error   ] --- Buffer Overflow in replace_negative()\n");
+		fprintf(stderr,
+			"[  Error   ] --- Buffer Overflow in replace_negative()\n");
 		free(result);
 		free(origin);
 		_fail(__FILE__, __LINE__);
@@ -229,16 +257,21 @@ void listdir(const char *name, char ***files, int *num_files)
 	while ((entry = readdir(dir)) != NULL) {
 		if (entry->d_type == DT_DIR) {
 			char path[1024];
-			if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			if (strcmp(entry->d_name, ".") == 0 ||
+			    strcmp(entry->d_name, "..") == 0)
 				continue;
-			snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+			snprintf(path, sizeof(path), "%s/%s", name,
+				 entry->d_name);
 			listdir(path, files, num_files);
 		} else {
 			cnt = *num_files;
-			*files = (char **)realloc(*files, sizeof(char *) * (cnt + 1));
-			(*files)[cnt] = (char *)malloc(sizeof(char) * ( strlen(name) + 1 + strlen(entry->d_name) + 10));
+			*files = (char **)realloc(*files,
+						  sizeof(char *) * (cnt + 1));
+			(*files)[cnt] = (char *)malloc(
+				sizeof(char) * (strlen(name) + 1 +
+						strlen(entry->d_name) + 10));
 			sprintf((*files)[cnt], "%s/%s", name, entry->d_name);
-			cnt ++;
+			cnt++;
 			*num_files = cnt;
 		}
 	}
@@ -254,8 +287,10 @@ void trim_str(char *str)
 	start = 0;
 	end = strlen(str) - 1;
 	j = 0;
-	while (start < strlen(str) && isspace(str[start])) start++;
-	while (end >= 0 && isspace(str[end])) end--;
+	while (start < strlen(str) && isspace(str[start]))
+		start++;
+	while (end >= 0 && isspace(str[end]))
+		end--;
 
 	for (i = start; i <= end; ++i)
 		tmp[j++] = str[i];

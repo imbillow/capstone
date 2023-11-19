@@ -2,6 +2,12 @@
   "version": 3,
   "configurePresets": [
     {
+      "name": "default",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
       "name": "locations-base",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
@@ -39,17 +45,17 @@
     },
     {
       "name": "linux-x64",
-      "inherits": [ "ninja", "x64", "locations-base", "warnings-base" ],
+      "inherits": [ "ninja", "x64", "locations-base", "warnings-base", "default" ],
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"}
     },
     {
       "name": "macos-x64",
-      "inherits": [ "ninja", "x64", "locations-base", "warnings-base" ],
+      "inherits": [ "ninja", "x64", "locations-base", "warnings-base", "default" ],
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"}
     },
     {
       "name": "windows-x64",
-      "inherits": [ "ninja", "x64", "locations-base", "warnings-base" ],
+      "inherits": [ "ninja", "x64", "locations-base", "warnings-base", "default" ],
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"}
     }
   ],
